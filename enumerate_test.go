@@ -34,3 +34,22 @@ func TestEnumerate(t *testing.T) {
 	assert.Nil(t, err)
 	spew.Dump(ds)
 }
+
+func TestEnumerateMatchSubsystem(t *testing.T) {
+	ctx := NewContext()
+	defer ctx.Free()
+
+	e := ctx.NewEnumerate()
+	defer e.Free()
+
+	err := e.MatchSubsystem("block")
+	assert.Nil(t, err)
+
+	ds, err := e.Devices(nil)
+	assert.Nil(t, err)
+	spew.Dump(ds)
+
+	dsDisk, err := e.Devices(WithFilterBlockDevtype("disk"))
+	assert.Nil(t, err)
+	spew.Dump(dsDisk)
+}

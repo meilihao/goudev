@@ -6,12 +6,15 @@ import "C"
 import (
 	"errors"
 	"fmt"
+	"path/filepath"
+	"strings"
 	"unsafe"
 )
 
 var (
-	ErrDeviceNotFoundByName = errors.New("DeviceNotFoundByName")
-	ErrNoParentDevice       = errors.New("NoParentDevice")
+	ErrDeviceNotFoundByNameTmpl = "No device %s in %s"
+	ErrDeviceNotFoundByPathTmpl = "No device at %s"
+	ErrNoParentDevice           = errors.New("NoParentDevice")
 )
 
 type Device struct {
@@ -37,7 +40,27 @@ func (d *Device) FromName(ctx *Context, subsystem, sysName string) error {
 
 	d.udevDevice = C.udev_device_new_from_subsystem_sysname(ctx.udev, cSubsystem, cSysName)
 	if d.udevDevice == nil {
-		return ErrDeviceNotFoundByName
+		return fmt.Errorf(ErrDeviceNotFoundByNameTmpl, sysName, subsystem)
+	}
+
+	return nil
+}
+
+func (d *Device) FromPath(ctx *Context, path string) error {
+	if !strings.HasPrefix(path, "/sys") {
+		path = filepath.Join("/sys", path)
+	}
+
+	return d.FromSysPath(ctx, path)
+}
+
+func (d *Device) FromSysPath(ctx *Context, path string) error {
+	cPath := C.CString(path)
+	defer C.free(unsafe.Pointer(cPath))
+
+	d.udevDevice = C.udev_device_new_from_syspath(ctx.udev, cPath)
+	if d.udevDevice == nil {
+		return fmt.Errorf(ErrDeviceNotFoundByPathTmpl, path)
 	}
 
 	return nil
@@ -45,6 +68,10 @@ func (d *Device) FromName(ctx *Context, subsystem, sysName string) error {
 
 func (d *Device) SysPath() string {
 	return C.GoString(C.udev_device_get_syspath(d.udevDevice))
+}
+
+func (d *Device) SysName() string {
+	return C.GoString(C.udev_device_get_sysname(d.udevDevice))
 }
 
 func (d *Device) String() string {
@@ -130,6 +157,12 @@ func WithFilterPciParentChildren(p *Device) func(*Device) bool {
 		}
 
 		return true
+	}
+}
+
+func WithFilterBlockDevtype(devtype string) func(*Device) bool {
+	return func(td *Device) bool {
+		return td.Get("DEVTYPE") == devtype
 	}
 }
 

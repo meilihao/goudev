@@ -1,10 +1,11 @@
 package goudev
 
-// #cgo LDFLAGS: -ludev
 // #include <libudev.h>
+// #include <stdlib.h>
 import "C"
 import (
 	"errors"
+	"unsafe"
 )
 
 type Enumerate struct {
@@ -21,6 +22,57 @@ func (e *Enumerate) Free() {
 func (e *Enumerate) MatchParent(parent *Device) error {
 	if C.udev_enumerate_add_match_parent(e.udevEnumerate, parent.udevDevice) != 0 {
 		return errors.New("udev: udev_enumerate_add_match_parent failed")
+	}
+
+	return nil
+}
+
+// https://github.com/systemd/systemd/blob/main/src/libudev/libudev-enumerate.c#L278
+func (e *Enumerate) MatchProperty(prop, value string) error {
+	cProp := C.CString(prop)
+	defer C.free(unsafe.Pointer(cProp))
+
+	cValue := C.CString(value)
+	defer C.free(unsafe.Pointer(cValue))
+
+	if C.udev_enumerate_add_match_property(e.udevEnumerate, cProp, cValue) != 0 {
+		return errors.New("udev: udev_enumerate_add_match_property failed")
+	}
+
+	return nil
+}
+
+// https://github.com/systemd/systemd/blob/main/src/libudev/libudev-enumerate.c
+func (e *Enumerate) MatchSubsystem(subsystem string) error {
+	cSubsystem := C.CString(subsystem)
+	defer C.free(unsafe.Pointer(cSubsystem))
+
+	if C.udev_enumerate_add_match_subsystem(e.udevEnumerate, cSubsystem) != 0 {
+		return errors.New("udev: udev_enumerate_add_match_subsystem failed")
+	}
+
+	return nil
+}
+
+// https://github.com/systemd/systemd/blob/main/src/libudev/libudev-enumerate.c#L385
+func (e *Enumerate) MatchSysname(sysname string) error {
+	cSysname := C.CString(sysname)
+	defer C.free(unsafe.Pointer(cSysname))
+
+	if C.udev_enumerate_add_match_sysname(e.udevEnumerate, cSysname) != 0 {
+		return errors.New("udev: udev_enumerate_add_match_sysname failed")
+	}
+
+	return nil
+}
+
+// https://github.com/systemd/systemd/blob/main/src/libudev/libudev-enumerate.c#L303
+func (e *Enumerate) MatchTag(tag string) error {
+	cTag := C.CString(tag)
+	defer C.free(unsafe.Pointer(cTag))
+
+	if C.udev_enumerate_add_match_tag(e.udevEnumerate, cTag) != 0 {
+		return errors.New("udev: udev_enumerate_add_match_tag failed")
 	}
 
 	return nil
