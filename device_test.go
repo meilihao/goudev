@@ -27,6 +27,9 @@ func TestDeviceFromNamePci(t *testing.T) {
 	assert.Empty(t, vendor2)
 	spew.Dump(vendor2)
 
+	tags := d.Tags()
+	spew.Dump(tags)
+
 	props := d.Properties()
 	spew.Dump(props)
 

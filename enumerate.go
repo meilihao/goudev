@@ -42,6 +42,20 @@ func (e *Enumerate) MatchProperty(prop, value string) error {
 	return nil
 }
 
+func (e *Enumerate) MatchSysattr(sysattr, value string) error {
+	cSysattr := C.CString(sysattr)
+	defer C.free(unsafe.Pointer(cSysattr))
+
+	cValue := C.CString(value)
+	defer C.free(unsafe.Pointer(cValue))
+
+	if C.udev_enumerate_add_match_sysattr(e.udevEnumerate, cSysattr, cValue) != 0 {
+		return errors.New("udev: udev_enumerate_add_match_sysattr failed")
+	}
+
+	return nil
+}
+
 // https://github.com/systemd/systemd/blob/main/src/libudev/libudev-enumerate.c
 func (e *Enumerate) MatchSubsystem(subsystem string) error {
 	cSubsystem := C.CString(subsystem)

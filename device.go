@@ -66,6 +66,50 @@ func (d *Device) FromSysPath(ctx *Context, path string) error {
 	return nil
 }
 
+func (d *Device) Action() string {
+	return C.GoString(C.udev_device_get_action(d.udevDevice))
+}
+
+func (d *Device) DeviceNode() string {
+	return C.GoString(C.udev_device_get_devnode(d.udevDevice))
+}
+
+func (d *Device) DeviceNumber() *Devnum {
+	return &Devnum{C.udev_device_get_devnum(d.udevDevice)}
+}
+
+// devpath
+func (d *Device) DevicePath() string {
+	return C.GoString(C.udev_device_get_devpath(d.udevDevice))
+}
+
+func (d *Device) DeviceType() string {
+	return C.GoString(C.udev_device_get_devtype(d.udevDevice))
+}
+
+func (d *Device) Driver() string {
+	return C.GoString(C.udev_device_get_driver(d.udevDevice))
+}
+
+func (d *Device) HasTag(tag string) bool {
+	cTag := C.CString(tag)
+	defer C.free(unsafe.Pointer(cTag))
+
+	return C.udev_device_has_tag(d.udevDevice, cTag) != 0
+}
+
+func (d *Device) IsInitialized() bool {
+	return C.udev_device_get_is_initialized(d.udevDevice) != 0
+}
+
+func (d *Device) TimeSinceInitialized() uint64 {
+	return uint64(C.udev_device_get_usec_since_initialized(d.udevDevice)) // ms
+}
+
+func (d *Device) SequenceNumber() uint64 {
+	return uint64(C.udev_device_get_seqnum(d.udevDevice))
+}
+
 func (d *Device) SysPath() string {
 	return C.GoString(C.udev_device_get_syspath(d.udevDevice))
 }
@@ -74,8 +118,16 @@ func (d *Device) SysName() string {
 	return C.GoString(C.udev_device_get_sysname(d.udevDevice))
 }
 
+func (d *Device) SysNumber() string {
+	return C.GoString(C.udev_device_get_sysnum(d.udevDevice))
+}
+
 func (d *Device) String() string {
 	return fmt.Sprintf(`Device("%s")`, d.SysPath())
+}
+
+func (d *Device) Subsystem() string {
+	return C.GoString(C.udev_device_get_subsystem(d.udevDevice))
 }
 
 func (d *Device) Get(property string) string {
@@ -90,6 +142,20 @@ func (d *Device) GetAttribute(attribute string) string {
 	defer C.free(unsafe.Pointer(cAttribute))
 
 	return C.GoString(C.udev_device_get_sysattr_value(d.udevDevice, cAttribute))
+}
+
+func (d *Device) SetAttribute(sysattr, value string) error {
+	cSysattr := C.CString(sysattr)
+	defer C.free(unsafe.Pointer(cSysattr))
+
+	cValue := C.CString(value)
+	defer C.free(unsafe.Pointer(cValue))
+
+	if C.udev_device_set_sysattr_value(d.udevDevice, cSysattr, cValue) != 0 {
+		return errors.New("udev: udev_device_get_sysattr_value failed")
+	}
+
+	return nil
 }
 
 type ListEntry struct {
@@ -114,15 +180,6 @@ func NewListEntryArray(ptr *C.struct_udev_list_entry) ListEntryArray {
 
 type ListEntryMap map[string]string
 
-func (d *Device) Properties() ListEntryMap {
-	entries := NewListEntryArray(C.udev_device_get_properties_list_entry(d.udevDevice))
-	properties := ListEntryMap{}
-	for _, entry := range entries {
-		properties[entry.Name] = entry.Value // d.Get(entry.Name)
-	}
-	return properties
-}
-
 func (d *Device) Attributes() ListEntryMap {
 	entries := NewListEntryArray(C.udev_device_get_sysattr_list_entry(d.udevDevice))
 	attributes := ListEntryMap{}
@@ -132,6 +189,34 @@ func (d *Device) Attributes() ListEntryMap {
 	return attributes
 }
 
+// devlinks
+func (d *Device) DeviceLinks() ListEntryMap {
+	entries := NewListEntryArray(C.udev_device_get_devlinks_list_entry(d.udevDevice))
+	devlinks := ListEntryMap{}
+	for _, entry := range entries {
+		devlinks[entry.Name] = entry.Value // d.Get(entry.Name)
+	}
+	return devlinks
+}
+
+func (d *Device) Properties() ListEntryMap {
+	entries := NewListEntryArray(C.udev_device_get_properties_list_entry(d.udevDevice))
+	properties := ListEntryMap{}
+	for _, entry := range entries {
+		properties[entry.Name] = entry.Value // d.Get(entry.Name)
+	}
+	return properties
+}
+
+func (d *Device) Tags() ListEntryMap {
+	entries := NewListEntryArray(C.udev_device_get_tags_list_entry(d.udevDevice))
+	tags := ListEntryMap{}
+	for _, entry := range entries {
+		tags[entry.Name] = entry.Value // d.Get(entry.Name)
+	}
+	return tags
+}
+
 func (d *Device) Parent() (*Device, error) {
 	p := C.udev_device_get_parent(d.udevDevice)
 	if p == nil {
@@ -139,6 +224,28 @@ func (d *Device) Parent() (*Device, error) {
 	}
 
 	// the parent device is not referenced, thus forcibly acquire a reference
+	return &Device{
+		udevDevice: C.udev_device_ref(p),
+	}, nil
+}
+
+func (d *Device) FindParent(subsystem string, deviceType ...string) (*Device, error) {
+	cSubsystem := C.CString(subsystem)
+	defer C.free(unsafe.Pointer(cSubsystem))
+
+	var cDeviceType *C.char
+	if len(deviceType) > 0 {
+		cDeviceType = C.CString(deviceType[0])
+		defer C.free(unsafe.Pointer(cDeviceType))
+	} else {
+		cDeviceType = nil
+	}
+
+	p := C.udev_device_get_parent_with_subsystem_devtype(d.udevDevice, cSubsystem, cDeviceType)
+	if p == nil {
+		return nil, ErrNoParentDevice
+	}
+
 	return &Device{
 		udevDevice: C.udev_device_ref(p),
 	}, nil
