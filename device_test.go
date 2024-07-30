@@ -40,7 +40,7 @@ func TestDeviceFromNamePci(t *testing.T) {
 	assert.Nil(t, err)
 	defer p.Free()
 
-	cs, err := p.Children()
+	cs, err := p.Children(WithFilterPciParentChildren)
 	assert.Nil(t, err)
 	for _, cd := range cs {
 		spew.Dump(cd)

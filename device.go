@@ -253,7 +253,7 @@ func (d *Device) FindParent(subsystem string, deviceType ...string) (*Device, er
 
 type FilterFn func(td *Device) bool
 
-func WithFilterPciParentChildren(p *Device) func(*Device) bool {
+func WithFilterPciParentChildren(p *Device) FilterFn {
 	return func(td *Device) bool {
 		if p.SysPath() == td.SysPath() {
 			return false
@@ -267,13 +267,19 @@ func WithFilterPciParentChildren(p *Device) func(*Device) bool {
 	}
 }
 
-func WithFilterBlockDevtype(devtype string) func(*Device) bool {
+func WithFilterBlockDevtype(devtype string) FilterFn {
 	return func(td *Device) bool {
 		return td.Get("DEVTYPE") == devtype
 	}
 }
 
-func (d *Device) Children() ([]*Device, error) {
+func WithFilterTrue(devtype string) FilterFn {
+	return func(td *Device) bool {
+		return true
+	}
+}
+
+func (d *Device) Children(pfilter func(p *Device) FilterFn) ([]*Device, error) {
 	e := &Enumerate{
 		udevEnumerate: C.udev_enumerate_new(C.udev_device_get_udev(d.udevDevice)),
 	}
@@ -284,5 +290,5 @@ func (d *Device) Children() ([]*Device, error) {
 		return nil, err
 	}
 
-	return e.Devices(WithFilterPciParentChildren(d))
+	return e.Devices(pfilter(d))
 }
