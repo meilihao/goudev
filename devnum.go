@@ -4,7 +4,6 @@
 package goudev
 
 /*
-  #cgo LDFLAGS: -ludev
   #include <libudev.h>
   #include <linux/types.h>
   #include <stdlib.h>
