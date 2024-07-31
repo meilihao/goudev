@@ -26,6 +26,10 @@ type Devnum struct {
 	d C.dev_t
 }
 
+func (d Devnum) Number() uint32 {
+	return uint32(d.d)
+}
+
 // Major returns the major part of a Devnum
 func (d Devnum) Major() int {
 	return int(C.go_udev_major(d.d))
