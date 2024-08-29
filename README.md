@@ -1,6 +1,9 @@
 # README
 A binding to libudev for go, api like pyudev.
 
+## deps
+- ubuntu: libudev-dev
+
 ## doc
 - [api](https://pkg.go.dev/github.com/meilihao/goudev)
 
