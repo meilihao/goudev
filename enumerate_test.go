@@ -52,4 +52,5 @@ func TestEnumerateMatchSubsystem(t *testing.T) {
 	dsDisk, err := e.Devices(WithFilterBlockDevtype("disk"))
 	assert.Nil(t, err)
 	spew.Dump(dsDisk)
+	FreeDevices(dsDisk)
 }

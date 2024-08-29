@@ -27,6 +27,12 @@ func (d *Device) Free() {
 	}
 }
 
+func FreeDevices(ds []*Device) {
+	for i := range ds {
+		ds[i].Free()
+	}
+}
+
 func NewDevice() *Device {
 	return &Device{}
 }

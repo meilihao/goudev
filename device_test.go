@@ -126,4 +126,5 @@ func TestDeviceProperties(t *testing.T) {
 	spew.Dump(props["DEVPATH"])
 	spew.Dump(props["ID_WWN"])
 	spew.Dump(props["ID_BUS"])
+	spew.Dump(d.Get("DEVLINKS"))
 }
